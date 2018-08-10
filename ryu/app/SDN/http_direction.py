@@ -30,14 +30,14 @@ class Http_Direction(app_manager.RyuApp):
         self.IPinService = [IP1, IP2]
         self.service_nginx_dict = {IP1 : CACHE_IP, IP2 : CACHE_IP}
         self.local_cache = {}
-	print('default Flow 1')
+        print('default Flow 1')
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-	print('default Flow 2')
+        print('default Flow 2')
         self.set_default_flow_pc(datapath)
         self.set_default_flow_server(datapath)
 
@@ -54,7 +54,7 @@ class Http_Direction(app_manager.RyuApp):
         mod = parser.OFPFlowMod(datapath=datapath, priority =1,
                                 table_id = NGNIX_REDIRECT_TABLE,
                                 match = match, instructions = inst)
-	print('DST:'+mod)
+        print('DST:'+mod)
         datapath.send_msg(mod)
 
     def set_default_flow_server(self, datapath, **kwargs):
@@ -74,7 +74,7 @@ class Http_Direction(app_manager.RyuApp):
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _redirect(self, ev):
-	print('Packet In')
+        print('Packet In')
         # 先接收流信息储存，再重定向
         msg = ev.msg
         datapath = msg.datapath
@@ -92,13 +92,11 @@ class Http_Direction(app_manager.RyuApp):
         tcp_dst = header_list[tcp].dst_port #数据包的传输层目的端口号
         eth_type = header_list[ethernet].ethertype #请求数据包的以太网协议类型
         self.local_cache.setdefault((eth_src, tcp_src), (in_port, ip_dst, eth_dst))
+        # print(self.local_cache.get((eth_src, tcp_src))
         # 键：终端MAC地址，传输层源端口号 值：交换机入端口，终端请求目的端的IP地址，终端请求目的端的MAC地址
-	print(self.local_cache.get((eth_src, tcp_src))
-
         # 重定向过程
+        # 主机侧 传输层目的端口号是80 且 终端是需要提供加速代理的用户 且 过滤由代理服务器发出和主动发往代理服务器的流量。
         if tcp_dst == 80 and ip_src in self.IPinService and eth_src != CACHE_MAC and ip_dst != CACHE_IP:
-            # 主机侧 传输层目的端口号是80 且 终端是需要提供加速代理的用户 且 过滤由代理服务器发出和主动发往代理服务器的流量。
-
             actions = []
             actions.append(parser.OFPActionSetField(ipv4_dst = CACHE_IP))  #修改目的IP，MAC为代理服务器
             actions.append(parser.OFPActionSetField(eth_dst = CACHE_MAC))
